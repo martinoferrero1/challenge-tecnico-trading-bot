@@ -1,0 +1,1 @@
+# challenge-tecnico-trading-bot
