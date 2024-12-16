@@ -6,9 +6,11 @@ from strategies.cross_method import CrossMethod
 from strategies.golden_and_death_cross import GoldenDeathCross
 
 DATA_FOLDER = 'data'
+LOGS_FOLDER = 'logs'
+LOGS_FILE = 'operations.log'
 CASH = 100000.0
 START_DATE = datetime(2021, 1, 1)
-END_DATE = datetime(2021, 12, 31)
+END_DATE = datetime(2022, 1, 1)
 
 def load_datafeeds(data_folder):
     """
@@ -33,42 +35,61 @@ def load_datafeeds(data_folder):
     
     return datafeeds
 
-def create_cerebro(data_folder, initial_cash):
+def create_logs_file():
+    """
+    Crea la carpeta de logs y el archivo operations.log si no existen.
+    Vacía el archivo si ya existe.
+
+    Returns:
+        str: Ruta al archivo de logs.
+    """
+    if not os.path.exists(LOGS_FOLDER):
+        os.makedirs(LOGS_FOLDER)
+    log_file_path = os.path.join(LOGS_FOLDER, LOGS_FILE)
+    with open(log_file_path, 'w') as log_file:
+        log_file.truncate(0)
+    
+    return log_file_path
+
+def create_cerebro(log_file_path):
     """
     A partir de esta función se crea y configura el motor cerebro de Backtrader.
 
     Args:
-        data_folder (str): Carpeta que contiene los archivos CSV de los datafeeds.
-        initial_cash (float): Monto inicial para el portafolio.
+        log_file_path (str): Ruta al archivo de logs.
 
     Returns:
         cerebro (bt.Cerebro): Motor cerebro configurado con datafeeds y estrategias.
     """
     cerebro = bt.Cerebro()
 
-    datafeeds = load_datafeeds(data_folder)
+    datafeeds = load_datafeeds(DATA_FOLDER)
 
     for datafeed, name in datafeeds:
         cerebro.adddata(datafeed, name=name)
 
-    cerebro.addstrategy(CrossMethod)
-    cerebro.addstrategy(CrossMethod, period=30)
-    cerebro.addstrategy(GoldenDeathCross)
+    cerebro.addstrategy(CrossMethod, log_file_path=log_file_path)
+    cerebro.addstrategy(CrossMethod, period=30, log_file_path=log_file_path)
+    cerebro.addstrategy(GoldenDeathCross, log_file_path=log_file_path)
 
-    cerebro.broker.setcash(initial_cash)
+    cerebro.broker.setcash(CASH)
 
     return cerebro
 
 if __name__ == '__main__':
 
-    cerebro = create_cerebro(DATA_FOLDER, CASH)
+    log_file_path = create_logs_file()
+
+    cerebro = create_cerebro(log_file_path)
 
     initial_value = cerebro.broker.getvalue()
 
-    print(f'VALOR DE INICIO DEL PORTAFOLIO: {initial_value:.2f}')
+    with open(log_file_path, 'a') as log_file:
+        log_file.write(f'VALOR DE INICIO DEL PORTAFOLIO: {initial_value:.2f}\n')
 
     cerebro.run()
 
     final_value = cerebro.broker.getvalue()
     
-    print(f'VALOR DE FIN DEL PORTAFOLIO: {final_value:.2f}')
+    with open(log_file_path, 'a') as log_file:
+        log_file.write(f'VALOR DE FIN DEL PORTAFOLIO: {final_value:.2f}\n')
