@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import backtrader as bt
 
+from strategies.general_strategy import GeneralStrategy
 from strategies.cross_method import CrossMethod
 from strategies.golden_and_death_cross import GoldenDeathCross
 
@@ -68,9 +69,12 @@ def create_cerebro(log_file_path):
     for datafeed, name in datafeeds:
         cerebro.adddata(datafeed, name=name)
 
-    cerebro.addstrategy(CrossMethod, log_file_path=log_file_path)
-    cerebro.addstrategy(CrossMethod, period=30, log_file_path=log_file_path)
-    cerebro.addstrategy(GoldenDeathCross, log_file_path=log_file_path)
+    GeneralStrategy.log_file_path = log_file_path
+    #GeneralStrategy.show_generated_order_log = True #Descomentar si se quiere ver también los logs de las órdenes generadas pero en proceso
+
+    cerebro.addstrategy(CrossMethod)
+    cerebro.addstrategy(CrossMethod, period=30)
+    cerebro.addstrategy(GoldenDeathCross)
 
     cerebro.broker.setcash(CASH)
 

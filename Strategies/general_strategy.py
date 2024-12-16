@@ -6,22 +6,28 @@ class GeneralStrategy(bt.Strategy):
     Permite gestionar compras y ventas automáticas basadas en condiciones definidas.
 
     Atributos de clase:
+        log_file_path (str): Ruta al archivo de log. Por defecto es 'logs/operations.log'.
+        show_generated_order_log (bool): Indica si mostrar o no el log de órdenes generadas en el next, pero que están en proceso (ni ejecutadas, ni canceladas, etc). Por defecto no se muestra.
         pending_operation_funds (int): Monto de dinero pendiente de operaciones, para evitar que una operación de compra utilice fondos de otra operación de compra que todavía no se ha completado.
+
 
     Atributos:
         log_file (file): Archivo de log para registrar las operaciones realizadas, se guarda en la carpeta logs del proyecto.
         assets_registry (dict): Registro de activos y sus respectivas cantidades para la estrategia, para saber cuántos activos se tienen en cartera disponibles para vender con la estrategia.
     Args:
-        investment_fraction (float): Fracción del portafolio a invertir en cada activo. Por defecto es 0.1, o sea el 10% del portafolio. 
-        log_file_path (str): Ruta al archivo de log. Por defecto es 'logs/operations.log'.
+        investment_fraction (float): Fracción del portafolio a invertir en cada activo. Por defecto es 0.1, o sea el 10% del portafolio.
     """
 
+    log_file_path = 'logs/operations.log'
+
+    show_generated_order_log = False
+
+    pending_operation_funds = 0
+    
     params = (
         ('investment_fraction', 0.1),
         ('log_file_path', 'logs/operations.log'),
     )
-
-    pending_operation_funds = 0
 
     def __init__(self):
         """
@@ -111,12 +117,14 @@ class GeneralStrategy(bt.Strategy):
                 vol = self.get_purchase_vol(data)
                 if vol > 0:
                     GeneralStrategy.pending_operation_funds += vol * data.close[0] # Se reserva el dinero para la operación recién acá porque antes aún no se sabe si se va a generar la orden
-                    self.add_log_entry('ORDEN DE COMPRA GENERADA, ACTIVO: %s, PRECIO: %.2f, CANTIDAD: %i' % 
+                    if GeneralStrategy.show_generated_order_log:
+                        self.add_log_entry('ORDEN DE COMPRA GENERADA, ACTIVO: %s, PRECIO: %.2f, CANTIDAD: %i' % 
                             (data._name, data.close[0], vol), self.datas[0].datetime.date(0))
                     self.buy(data=data._name, size=vol)
 
             elif position_data > 0 and self.conditions_sell(data): # La verificación de posición ya impide que se venda si es 0, o sea que va a haber que comprar primero, y nunca se venderá algo que no se tiene
-                self.add_log_entry('ORDEN DE VENTA GENERADA, ACTIVO: %s, PRECIO: %.2f, CANTIDAD: %i' % 
+                if GeneralStrategy.show_generated_order_log:
+                    self.add_log_entry('ORDEN DE VENTA GENERADA, ACTIVO: %s, PRECIO: %.2f, CANTIDAD: %i' % 
                         (data._name, data.close[0], position_data), self.datas[0].datetime.date(0))
                 self.sell(data=data._name, size=position_data)  # Al vender lo que indica la posición respecto al activo en sí, que es
                                                                 # independiente para cada estrategia, ya se impide que quede en una posición
